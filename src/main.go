@@ -7,6 +7,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"os/signal"
 	"sample-golang-project/config"
+	"sample-golang-project/kafka"
 	"sample-golang-project/mongodb"
 	"sample-golang-project/server"
 	"syscall"
@@ -30,7 +31,9 @@ func main() {
 		logger.Error("failed to create mongo repository")
 	}
 
-	s := server.New(imp, mux.NewRouter(), cfg, logger)
+	publisher := kafka.NewControllerPublisher(ctx, cfg, logger)
+
+	s := server.New(imp, mux.NewRouter(), publisher, cfg, logger)
 
 	errWg.Go(func() error {
 		return s.Start(ctx)

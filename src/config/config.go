@@ -6,12 +6,13 @@ import (
 )
 
 type Configuration struct {
-	KafkaBrokers []string
-	KafkaTopic   string
-	MongoURI     string
-	MongoDB      string
-	MongoColl    string
-	ServerPort   string
+	KafkaBrokers  []string
+	KafkaTopic    string
+	KafkaCapacity int
+	MongoURI      string
+	MongoDB       string
+	MongoColl     string
+	ServerPort    string
 }
 
 func NewConfig() *Configuration {
