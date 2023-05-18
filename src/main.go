@@ -4,20 +4,16 @@ import (
 	"context"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
-	"os/signal"
+	"sample-golang-project/api"
 	"sample-golang-project/config"
 	"sample-golang-project/kafka"
+	"sample-golang-project/model"
 	"sample-golang-project/mongodb"
 	"sample-golang-project/server"
-	"syscall"
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL)
-	defer stop()
-	errWg, ctx := errgroup.WithContext(ctx)
-
+	ctx := context.Background()
 	cfg := config.NewConfig()
 
 	basicLogger, err := zap.NewProduction()
@@ -26,30 +22,22 @@ func main() {
 	}
 	logger := basicLogger.Sugar()
 
-	imp, err := mongodb.New(cfg, logger)
+	deviceRepository, err := mongodb.New(cfg, logger)
 	if err != nil {
 		logger.Error("failed to create mongo repository")
 	}
 
-	publisher := kafka.NewControllerPublisher(ctx, cfg, logger)
+	restToKafka := make(chan *model.Device, cfg.KafkaCapacity)
+	kafkaToEs := make(chan *model.Device, cfg.KafkaCapacity)
 
-	s := server.New(imp, mux.NewRouter(), publisher, cfg, logger)
+	publisher := kafka.NewDevicePublisher(ctx, cfg, logger, restToKafka)
+	listener := kafka.NewListener(ctx, cfg, logger, kafkaToEs)
 
-	errWg.Go(func() error {
-		return s.Start(ctx)
-	})
+	router := mux.NewRouter()
+	endpoints := api.NewDeviceController(router, deviceRepository, restToKafka)
 
-	errWg.Go(func() error {
-		<-ctx.Done()
-		stop()
-		return s.Stop(ctx)
-	})
+	s := server.New(endpoints, deviceRepository, router, publisher, cfg, logger, listener)
 
-	err = errWg.Wait()
-	if err == context.Canceled || err == nil {
-		logger.Info("gracefully quit server")
-	} else if err != nil {
-		logger.Error("server quit with error", err)
-	}
+	s.Start(ctx)
 
 }

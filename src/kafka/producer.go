@@ -6,44 +6,42 @@ import (
 	"go.uber.org/zap"
 	"sample-golang-project/config"
 	"sample-golang-project/model"
+	"sync"
 	"time"
 
 	"github.com/segmentio/kafka-go"
 )
 
-type ControllerPublisher struct {
-	input  chan *model.Controller
+type DevicePublisher struct {
+	input  chan *model.Device
 	cfg    *config.Configuration
 	writer *kafka.Conn
 	logger *zap.SugaredLogger
+	wg     *sync.WaitGroup
 }
 
-func NewControllerPublisher(ctx context.Context, cfg *config.Configuration, logger *zap.SugaredLogger) *ControllerPublisher {
+func NewDevicePublisher(ctx context.Context, cfg *config.Configuration, logger *zap.SugaredLogger, input chan *model.Device) *DevicePublisher {
 	leader, err := kafka.DialLeader(ctx, "tcp", cfg.KafkaBrokers[0], cfg.KafkaTopic, 0)
 	if err != nil {
 
 	}
-	return &ControllerPublisher{
-		input:  make(chan *model.Controller, cfg.KafkaCapacity),
+	return &DevicePublisher{
+		input:  input,
 		cfg:    cfg,
 		writer: leader,
 		logger: logger,
+		wg:     &sync.WaitGroup{},
 	}
 }
 
-func (p *ControllerPublisher) Listen(ctx context.Context) {
-	go func() {
-		for controller := range p.input {
-			p.send(controller)
-		}
-	}()
+func (p *DevicePublisher) StartPublish(ctx context.Context) error {
+	for controller := range p.input {
+		p.send(controller)
+	}
+	return nil
 }
 
-func (p *ControllerPublisher) GetChannel() chan *model.Controller {
-	return p.input
-}
-
-func (p *ControllerPublisher) send(controller *model.Controller) {
+func (p *DevicePublisher) send(controller *model.Device) {
 	marshal, err := json.Marshal(controller)
 	if err != nil {
 		p.logger.Error("failed to serialize message ", err)
@@ -55,5 +53,8 @@ func (p *ControllerPublisher) send(controller *model.Controller) {
 			Value: marshal,
 		},
 	)
+	if err != nil {
+		p.logger.Errorf("failed to sent message to kafka topic")
+	}
 	p.logger.Info("Message published to Kafka topic.")
 }

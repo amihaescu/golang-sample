@@ -10,20 +10,24 @@ import (
 	"time"
 )
 
-type ControllerRepoImp struct {
+type DeviceRepoImp struct {
 	cfg        *config.Configuration
 	client     *mongo.Client
 	collection *mongo.Collection
 	logger     *zap.SugaredLogger
 }
 
-func New(config *config.Configuration, logger *zap.SugaredLogger) (*ControllerRepoImp, error) {
-	client, err := mongo.NewClient(options.Client().ApplyURI(config.MongoURI))
+func New(config *config.Configuration, logger *zap.SugaredLogger) (*DeviceRepoImp, error) {
+	credentials := options.Credential{
+		Username: config.MongoUser,
+		Password: config.MongoPass,
+	}
+	client, err := mongo.NewClient(options.Client().ApplyURI(config.MongoURI).SetAuth(credentials))
 	if err != nil {
 		return nil, err
 	}
 	collection := client.Database(config.MongoDB).Collection(config.MongoColl)
-	c := &ControllerRepoImp{
+	c := &DeviceRepoImp{
 		cfg:        config,
 		client:     client,
 		collection: collection,
@@ -32,23 +36,23 @@ func New(config *config.Configuration, logger *zap.SugaredLogger) (*ControllerRe
 	return c, nil
 }
 
-func (c *ControllerRepoImp) Start(ctx context.Context) error {
+func (c *DeviceRepoImp) Start(ctx context.Context) error {
 	return c.client.Connect(ctx)
 }
 
-func (c *ControllerRepoImp) Stop(ctx context.Context) error {
+func (c *DeviceRepoImp) Stop(ctx context.Context) error {
 	return c.client.Disconnect(ctx)
 }
 
-func (c *ControllerRepoImp) Save(ctx context.Context, controller *model.Controller) (interface{}, error) {
+func (c *DeviceRepoImp) Save(ctx context.Context, device *model.Device) (interface{}, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	result, err := c.collection.InsertOne(ctx, controller)
+	result, err := c.collection.InsertOne(ctx, device)
 	if err != nil {
 		return nil, err
 	}
 
-	c.logger.Info("saved controller with name ", controller.Name)
+	c.logger.Info("saved device with name ", device.Name)
 	return map[string]interface{}{"id": result.InsertedID}, nil
 }

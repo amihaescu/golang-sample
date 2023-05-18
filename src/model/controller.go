@@ -1,6 +1,6 @@
 package model
 
-type Controller struct {
+type Device struct {
 	Name      string `json:"name"`
 	Long      int    `json:"long"`
 	Lat       int    `json:"lat"`

@@ -8,14 +8,14 @@ import (
 	"sample-golang-project/types"
 )
 
-type ControllerEndpoint struct {
+type DeviceController struct {
 	router     *mux.Router
-	repository types.ControllerRepository
-	output     chan *model.Controller
+	repository types.DeviceRepository
+	output     chan *model.Device
 }
 
-func NewControllerEndpoints(router *mux.Router, repository types.ControllerRepository, output chan *model.Controller) *ControllerEndpoint {
-	c := &ControllerEndpoint{
+func NewDeviceController(router *mux.Router, repository types.DeviceRepository, output chan *model.Device) *DeviceController {
+	c := &DeviceController{
 		router:     router,
 		repository: repository,
 		output:     output,
@@ -24,9 +24,9 @@ func NewControllerEndpoints(router *mux.Router, repository types.ControllerRepos
 	return c
 }
 
-func (c *ControllerEndpoint) sendMessage(w http.ResponseWriter, r *http.Request) {
+func (c *DeviceController) sendMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var message *model.Controller
+	var message *model.Device
 	err := json.NewDecoder(r.Body).Decode(&message)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

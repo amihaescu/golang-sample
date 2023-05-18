@@ -5,8 +5,8 @@ import (
 	"sample-golang-project/model"
 )
 
-type ControllerRepository interface {
-	Save(ctx context.Context, controller *model.Controller) (interface{}, error)
+type DeviceRepository interface {
+	Save(ctx context.Context, device *model.Device) (interface{}, error)
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
 }
